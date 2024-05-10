@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn_base import Classifier
-from metrics import probabilityDistribution, accuracy
+from metrics import probability_distribution, accuracy
 
 class NaiveBayes(Classifier):
 
@@ -30,13 +30,10 @@ class NaiveBayes(Classifier):
             self.priors[cls] = {}
             for feature in range(X.shape[1]):
                 subset = X[y == cls, feature]
-                self.priors[cls][feature] = probabilityDistribution(subset, self.featureValues[feature], laplaceSmoothing = self.laplace)
+                self.priors[cls][feature] = probability_distribution(subset, self.featureValues[feature], laplaceSmoothing = self.laplace)
                 
-    
-    def predictProba(self, X):
-        return np.vectorize(self.predictHelper, signature='(n)->(k)')(X)
         
-    def predictHelper(self, sample):
+    def predict_sample_proba(self, sample):
         def predict(sample, cls):
             probas = np.array([self.priors[cls][feature][self.featureValues[feature][sample[feature]]] for feature in range(len(sample))] + [self.classProba[cls]])
             return np.sum(np.log(probas))

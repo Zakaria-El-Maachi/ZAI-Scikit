@@ -57,7 +57,7 @@ def mode(a):
     return scipy.stats.mode(a).mode
 
 
-def probabilityDistribution(y, classes, laplaceSmoothing = 0):
+def probability_distribution(y, classes, laplaceSmoothing = 0):
     uniqueValues, count = np.unique(y, return_counts=True)
     probaDistribution = np.ones(len(classes)) * laplaceSmoothing
     for i, v in enumerate(uniqueValues):
@@ -97,4 +97,3 @@ def f1(prediction, target, beta = 1):
     rec = recall(prediction, target)
     prec = precision(prediction, target)
     return (1+beta**2)*(prec*rec)/(beta**2 * prec + rec)
-

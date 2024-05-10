@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import warnings
 import numpy as np
+from joblib import Parallel, delayed
 
 class Estimator(ABC):
     
@@ -38,14 +39,27 @@ class Classifier(Predictor, ABC):
     def __init__(self) -> None:
         self.classes = None
 
+    
     @abstractmethod
-    def predictProba(self, X):
+    def predict_sample_proba(self, sample):
         pass
 
+    def predict_proba(self, X):
+        """
+        Predicts the probability distribution for each input data point.
+
+        Args:
+            X (array-like): The input data.
+
+        Returns:
+            array-like: The predicted probability distributions.
+        """
+        return Parallel(n_jobs=-1)(delayed(self.predict_sample_proba)(sample) for sample in X)
+
     def predict(self, X):
-        probaDistributions = self.predictProba(X)
+        probaDistributions = self.predict_proba(X)
         classesList = sorted(self.classes.keys(), key = lambda x : self.classes[x])
-        return np.vectorize(lambda x : classesList[np.argmax(x)], signature= '(n)->()')(probaDistributions)
+        return Parallel(n_jobs=-1)(delayed(lambda x : classesList[np.argmax(x)])(probas) for probas in probaDistributions)
         
 
 class Transformer(Estimator, ABC):

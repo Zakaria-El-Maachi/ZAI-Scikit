@@ -1,6 +1,6 @@
 from sklearn_base import Classifier
 import numpy as np
-from metrics import mse, mae, probabilityDistribution
+from metrics import mse, mae, probability_distribution
 
 class KNN(Classifier):
 
@@ -17,11 +17,8 @@ class KNN(Classifier):
         self.X = X
         self.y = y
         self.classes = {v:i for i, v in enumerate(np.unique(y))}
-
-    def predictProba(self, X):
-        return np.vectorize(self.helperProba, signature='(n)->(k)')(X)
     
-    def helperProba(self, sample):
+    def predict_sample_proba(self, sample):
         metric = self.distanceFuncs[self.distance]
         arr = [metric(i, sample) for i in self.X]
-        return probabilityDistribution(self.y[np.argsort(arr)][:self.k], self.classes)
+        return probability_distribution(self.y[np.argsort(arr)][:self.k], self.classes)

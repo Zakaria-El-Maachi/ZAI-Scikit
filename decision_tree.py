@@ -15,17 +15,17 @@ class DecisionStump:
         self.right = None
         self.probaDistribution = None
 
-    def isLeaf(self):
+    def is_leaf(self):
         return self.left == None and self.right == None
 
-    def countingMap(self, target, empty = False):
+    def counting_map(self, target, empty = False):
         if empty:
             return {val:0 for val in np.unique(target)}
         uniqueValues, count = np.unique(target, return_counts=True)
         return dict(zip(uniqueValues, count))
     
-    def calculateProba(self, target):
-        self.probaDistribution = probabilityDistribution(target, self.classes)
+    def calculate_proba(self, target):
+        self.probaDistribution = probability_distribution(target, self.classes)
 
     def fit(self, data, target):
         data = data.copy()
@@ -34,8 +34,8 @@ class DecisionStump:
         basePerformance = metricFunc(classCounts, proba=False)
         bestGain = 0
 
-        leftMap = self.countingMap(target, empty=True)
-        rightMap = self.countingMap(target)
+        leftMap = self.counting_map(target, empty=True)
+        rightMap = self.counting_map(target)
         
         for feature in range(data.shape[1]):
             sortedIndices = np.argsort(data[:, feature])
@@ -60,10 +60,13 @@ class DecisionStump:
                 gain = basePerformance - performance
                 if gain > bestGain:
                     bestGain = gain
-                    self.threshold = (t + thresholds[index+1])/2
+                    if(index+1 < len(thresholds)):
+                        self.threshold = (t + thresholds[index+1])/2
+                    else : 
+                        self.threshold = t
                     self.feature = feature
 
-    def predictProba(self, X):
+    def predict_sample_proba(self, X):
         return self.probaDistribution
 
 
@@ -72,18 +75,19 @@ class DecisionStump:
 
 class DecisionTreeClassifier(Classifier):
 
-    def __init__(self, criterion='entropy', min_sample_split=2, max_depth=100, n_features=None):
+    def __init__(self, criterion='entropy', min_sample_split=2, max_depth=100, n_features=None, classes=None):
         super().__init__()
         self.criterion = criterion
         self.min_sample_split = min_sample_split
         self.max_depth = max_depth
-        self.n_features = n_features
+        self.n_features = None
         self.root = None
+        self.classes = classes
 
     def fit(self, X, y):
-        self.n_features = X.shape[1] if not self.n_features else min(X.shape[1], self.n_features)
-        classes = np.unique(y)
-        self.classes = {classes[i]:i for i in range(len(classes))}
+        if(self.classes == None):
+            classes = np.unique(y)
+            self.classes = {classes[i]:i for i in range(len(classes))}
         self.root = self._growTree(X, y)
 
 
@@ -94,7 +98,7 @@ class DecisionTreeClassifier(Classifier):
         # Check the stopping criteria
         if(depth >= self.max_depth or n_labels == 1 or samples < self.min_sample_split):
             leafNode = DecisionStump(classes=self.classes)
-            leafNode.calculateProba(y)
+            leafNode.calculate_proba(y)
             return leafNode
 
 
@@ -104,7 +108,7 @@ class DecisionTreeClassifier(Classifier):
 
         if node.feature is None:
             node.classes = self.classes
-            node.calculateProba(y)
+            node.calculate_proba(y)
             return node
 
         # Create Child Nodes
@@ -119,13 +123,13 @@ class DecisionTreeClassifier(Classifier):
         return node
 
 
-    def predictProba(self, X):
-        vectorizedTraversal = np.vectorize(self._traverseTree, signature='(n)->(k)')
-        return vectorizedTraversal(X)
-
-    def _traverseTree(self, sample):
+    def predict_sample_proba(self, sample):
         curNode = self.root
-        while not curNode.isLeaf():
+        depth = 0
+        print("prediction of tree")
+        while not curNode.is_leaf():
+            print(depth)
+            depth += 1
             if sample[curNode.feature] <= curNode.threshold:
                 curNode = curNode.left
             else:
