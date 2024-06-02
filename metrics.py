@@ -80,6 +80,10 @@ def accuracy(prediction, target, normalize = True, balanced = False):
         ans /= len(prediction)
     return ans
 
+def accuracy_wrapper(estimator, X, y):
+    predictions = estimator.predict(X)
+    return accuracy(predictions, y)
+
 
 # In this version, the follwoing classification metrics are only for binary classification
 # The metrics work on numpy arrays and do not assert their type before checking
