@@ -101,10 +101,4 @@ class GradientBoostingClassifier(Classifier):
         proba = 1 / (1 + np.exp(-2 * F))
         return np.array([1-proba, proba])
 
-# Example usage:
-# X, y = load_data(...)
-# model = GradientBoostingClassifier(n_estimators=50, learning_rate=0.1, max_depth=3)
-# model.fit(X_train, y_train)
-# probabilities = model.predict_proba(X_test)
-# predictions = model.predict(X_test)
-# sample_proba = model.predict_sample_proba(X_test[0])
+
