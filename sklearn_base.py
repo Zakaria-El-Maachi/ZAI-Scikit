@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import warnings
 import numpy as np
 from joblib import Parallel, delayed
-from metrics import accuracy
+from metrics import accuracy, mse
 from sklearn.model_selection import cross_validate
 
 class Estimator(ABC):
@@ -169,20 +169,26 @@ class DummyTransformer(Transformer):
         return X
 
 
-class StackingClassifier(MetaEstimator, Classifier):
+class Stacking(MetaEstimator, ABC):
     def __init__(self, base_estimators, meta_estimator, scoring=None):
         super().__init__()
         self.base_estimators = base_estimators
         self.meta_estimator = meta_estimator
-        self.scoring = scoring 
+        self.scoring = scoring if scoring else self.default_scoring
+
+    @abstractmethod
+    def default_scoring(self, y_true, y_pred):
+        pass
 
     def fit(self, X, y):
         self.base_estimators_ = []
         for estimator in self.base_estimators:
-            fitted_estimator = estimator.fit(X, y)
-            self.base_estimators_.append(fitted_estimator)
+            estimator.fit(X, y)
+            self.base_estimators_.append(estimator)
+            # print(fitted_estimator)
         self.meta_features_ = self._get_meta_features(X)
         self.meta_estimator.fit(self.meta_features_, y)
+        self.classes = {label: i for i, label in enumerate(np.unique(y))}
 
     def _get_meta_features(self, X):
         meta_features = []
@@ -196,5 +202,23 @@ class StackingClassifier(MetaEstimator, Classifier):
         return self.meta_estimator.predict(meta_features)
 
     def score(self, X, y):
-        return self.scoring(self.predict(X), y)
-    
+        predictions = self.predict(X)
+        return self.scoring(y, predictions)
+
+
+class StackingClassifier(Stacking, Classifier):
+    def default_scoring(self, y_true, y_pred):
+        return accuracy(y_pred, y_true)
+
+    def predict_proba(self, X):
+        meta_features = self._get_meta_features(X)
+        return self.meta_estimator.predict_proba(meta_features)
+
+    def predict_sample_proba(self, sample):
+        meta_features = self._get_meta_features(sample)
+        return self.meta_estimator.predict_sample_proba(meta_features)
+
+
+class StackingRegressor(Stacking):
+    def default_scoring(self, y_true, y_pred):
+        return mse(y_pred, y_true)  # Default to mean squared error
