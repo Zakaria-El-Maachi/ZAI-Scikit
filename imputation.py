@@ -1,5 +1,5 @@
 import numpy as np
-from linear_regression import LinearRegression
+from linear_models import LinearRegression
 from scipy.stats import mode
 
 class SimpleImputer:

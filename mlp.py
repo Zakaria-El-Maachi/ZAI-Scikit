@@ -250,7 +250,7 @@ class MLP:
         output (numpy.ndarray): Predicted values.
         target (numpy.ndarray): Target values.
 
-        Returns:
+        Returns:    
         numpy.ndarray: Derivative of the loss with respect to the output.
         """
         return 2 * (output - target) / output.size
