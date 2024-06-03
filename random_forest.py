@@ -7,8 +7,17 @@ from joblib import Parallel, delayed
 
 
 class RandomForestClassifier(Classifier):
-    
-    def __init__(self, n_estimators = 100, criterion='entropy', min_sample_split=2, max_depth=100) -> None:
+    """
+    Random Forest Classifier.
+
+    Parameters:
+    n_estimators (int): Number of trees in the forest. Default is 100.
+    criterion (str): The function to measure the quality of a split ('entropy' or 'gini'). Default is 'entropy'.
+    min_sample_split (int): The minimum number of samples required to split an internal node. Default is 2.
+    max_depth (int): The maximum depth of the tree. Default is 100.
+    """
+
+    def __init__(self, n_estimators=100, criterion='entropy', min_sample_split=2, max_depth=100) -> None:
         super().__init__()
         self.n_estimators = n_estimators
         self.trees = None
@@ -19,10 +28,18 @@ class RandomForestClassifier(Classifier):
         self.n_features = None
 
     def fit(self, X, y):
+        """
+        Fit the Random Forest model using the provided training data.
+
+        Parameters:
+        X (numpy.ndarray): Training features.
+        y (numpy.ndarray): Training labels.
+        """
         self.trees = []
         classes = np.unique(y)
-        self.classes = {classes[i]:i for i in classes}
+        self.classes = {classes[i]: i for i in classes}
         self.n_features = []
+
         def build_tree():
             tree = DecisionTreeClassifier(criterion=self.criterion, min_sample_split=self.min_sample_split, max_depth=self.max_depth, classes=self.classes)
             sampleSize, n_features = X.shape
@@ -30,13 +47,22 @@ class RandomForestClassifier(Classifier):
             features = np.random.choice(n_features, min(n_features, max(2, round(np.sqrt(n_features)))), replace=False)
             tree.fit(X[indices][:, features], y[indices])
             return tree, features
+
         trees_and_features = Parallel(n_jobs=-1)(delayed(build_tree)() for _ in range(self.n_estimators))
 
         # Unpack the results into separate lists
         self.trees, self.n_features = zip(*trees_and_features)
 
-    
     def predict_sample_proba(self, sample):
+        """
+        Predict the class probabilities for a single sample.
+
+        Parameters:
+        sample (numpy.ndarray): The input sample.
+
+        Returns:
+        numpy.ndarray: Predicted class probabilities for the sample.
+        """
         # Collect predictions from all decision trees
         predictions = [tree.predict([sample[self.n_features[i]]])[0] for i, tree in enumerate(self.trees)]
         # Calculate the probability distribution using the predictions

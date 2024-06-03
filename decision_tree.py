@@ -3,10 +3,22 @@ from metrics import *
 from sklearn_base import Classifier
 
 class DecisionStump:
+    """
+        Represents a decision node or leaf in the decision tree which makes a decision at a single feature threshold.
+    """
 
     criterionMetric = {'entropy':entropy, 'gini': gini}
 
     def __init__(self, criterion='entropy', feature=None, threshold=None, classes = None) -> None:
+        """
+        Initializes the DecisionStump node.
+        
+        Args:
+            criterion (str): The function used to evaluate the quality of a split.
+            feature (int): Index of the feature used for splitting.
+            threshold (float): The value used as threshold for splitting at the selected feature.
+            classes (dict): Mapping of class labels to class indices.
+        """
         self.criterion = criterion
         self.feature = feature
         self.threshold = threshold
@@ -16,18 +28,37 @@ class DecisionStump:
         self.probaDistribution = None
 
     def is_leaf(self):
+        """ Check if the node is a leaf in the tree. """
         return self.left == None and self.right == None
 
     def counting_map(self, target, empty = False):
+        """
+        Create a mapping of class labels to their counts in the target array.
+        
+        Args:
+            target (array-like): The target labels.
+            empty (bool): Return an empty map if True.
+        
+        Returns:
+            A dictionary mapping labels to counts.
+        """
         if empty:
             return {val:0 for val in np.unique(target)}
         uniqueValues, count = np.unique(target, return_counts=True)
         return dict(zip(uniqueValues, count))
     
     def calculate_proba(self, target):
+        """ Calculate the probability distribution of the classes in the target. """
         self.probaDistribution = probability_distribution(target, self.classes)
 
     def fit(self, data, target):
+        """
+        Fit the decision stump to the data by finding the best feature and threshold to split the data.
+        
+        Args:
+            data (array-like): The features dataset.
+            target (array-like): The target labels.
+        """
         data = data.copy()
         metricFunc = self.criterionMetric[self.criterion]
         _, classCounts = np.unique(target, return_counts=True)
@@ -67,6 +98,7 @@ class DecisionStump:
                     self.feature = feature
 
     def predict_sample_proba(self, X):
+        """ Predict the probability distribution of the class for a sample. """
         return self.probaDistribution
 
 
@@ -74,8 +106,20 @@ class DecisionStump:
 
 
 class DecisionTreeClassifier(Classifier):
-
+    """
+    A decision tree classifier that uses entropy or gini index for splitting.
+    """
     def __init__(self, criterion='entropy', min_sample_split=2, max_depth=100, n_features=None, classes=None):
+        """
+        Initialize the DecisionTreeClassifier.
+        
+        Args:
+            criterion (str): The function to measure the quality of a split.
+            min_sample_split (int): The minimum number of samples required to split an internal node.
+            max_depth (int): The maximum depth of the tree.
+            n_features (int, optional): Number of features to consider when looking for the best split.
+            classes (dict, optional): Mapping of class labels to class indices.
+        """
         super().__init__()
         self.criterion = criterion
         self.min_sample_split = min_sample_split
@@ -85,6 +129,13 @@ class DecisionTreeClassifier(Classifier):
         self.classes = classes
 
     def fit(self, X, y):
+        """
+        Build a decision tree classifier from the training set (X, y).
+        
+        Args:
+            X (array-like): Training data.
+            y (array-like): Target values.
+        """
         if(self.classes == None):
             classes = np.unique(y)
             self.classes = {classes[i]:i for i in range(len(classes))}
@@ -92,6 +143,17 @@ class DecisionTreeClassifier(Classifier):
 
 
     def _growTree(self, X, y, depth = 0):
+        """
+        Recursively grow the tree.
+        
+        Args:
+            X (array-like): The data points.
+            y (array-like): The target labels.
+            depth (int): The current depth of the tree.
+        
+        Returns:
+            The root node of the decision tree.
+        """
         samples, _ = X.shape
         n_labels = len(np.unique(y))
 
@@ -124,6 +186,15 @@ class DecisionTreeClassifier(Classifier):
 
 
     def predict_sample_proba(self, sample):
+        """
+        Predict the class probabilities for a single sample.
+        
+        Args:
+            sample (array-like): A single sample.
+        
+        Returns:
+            The predicted class probabilities.
+        """
         curNode = self.root
         depth = 0
         print("prediction of tree")
@@ -138,7 +209,17 @@ class DecisionTreeClassifier(Classifier):
 
 
 class DecisionStumpRegressor:
+    """
+    A decision tree regressor that uses mean squared error as the criterion for splitting.
+    """
     def __init__(self, feature=None, threshold=None, value=None):
+        """
+        Initialize the DecisionTreeRegressor.
+        
+        Args:
+            max_depth (int): The maximum depth of the tree.
+            min_samples_split (int): The minimum number of samples required to split an internal node.
+        """
         self.feature = feature
         self.threshold = threshold
         self.value = value
@@ -146,9 +227,23 @@ class DecisionStumpRegressor:
         self.right = None
 
     def is_leaf(self):
+        """
+        Build a decision tree regressor from the training set (X, y).
+        
+        Args:
+            X (array-like): Training data.
+            y (array-like): Target values (continuous).
+        """
         return self.left is None and self.right is None
 
     def fit(self, data, target):
+        """"
+        Build a decision tree regressor from the training set (X, y).
+        
+        Args:
+            X (array-like): Training data.
+            y (array-like): Target values (continuous).
+        """
         best_mse = np.inf
         best_feature = None
         best_threshold = None

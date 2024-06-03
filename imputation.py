@@ -3,12 +3,35 @@ from linear_regression import LinearRegression
 from scipy.stats import mode
 
 class SimpleImputer:
+    """
+    Imputation transformer for completing missing values.
+
+    Parameters:
+    strategy (str): The imputation strategy.
+                    - "mean": Replace missing values using the mean along each column.
+                    - "median": Replace missing values using the median along each column.
+                    - "mode": Replace missing values using the most frequent value along each column.
+                    - "constant": Replace missing values with fill_value.
+    fill_value (any): When strategy == "constant", fill_value is used to replace all occurrences of missing values.
+
+    Attributes:
+    statistics_ (list): The statistics (mean, median, or mode) for each column in the training set.
+    """
     def __init__(self, strategy="mean", fill_value=None):
         self.strategy = strategy
         self.fill_value = fill_value
         self.statistics_ = None
 
     def fit(self, X):
+        """
+        Compute the statistics for each column.
+
+        Parameters:
+        X (array-like): The input data with missing values.
+
+        Returns:
+        self: Returns self.
+        """
         if self.strategy in ["mean", "median", "mode"]:
             self.statistics_ = []
             for col in range(X.shape[1]):
@@ -21,6 +44,15 @@ class SimpleImputer:
         return self
 
     def transform(self, X):
+        """
+        Replace missing values using the fitted statistics.
+
+        Parameters:
+        X (array-like): The input data with missing values.
+
+        Returns:
+        X_transformed (array-like): The input data with missing values imputed.
+        """
         X_transformed = np.array(X, copy=True)
         if self.strategy == "constant":
             fill_values = self.fill_value
@@ -33,22 +65,48 @@ class SimpleImputer:
         return X_transformed
 
     def fit_transform(self, X):
+        """
+        Fit to data, then transform it.
+
+        Parameters:
+        X (array-like): The input data with missing values.
+
+        Returns:
+        X_transformed (array-like): The input data with missing values imputed.
+        """
         return self.fit(X).transform(X)
 
 
 class KNNImputer:
+    """
+    Imputation for completing missing values using k-Nearest Neighbors.
+
+    Parameters:
+    n_neighbors (int): Number of neighboring samples to use for imputation.
+
+    Attributes:
+    n_neighbors (int): Number of neighboring samples to use for imputation.
+    """
     def __init__(self, n_neighbors=5):
         self.n_neighbors = n_neighbors
 
     def _compute_distances(self, X_complete, X_missing):
-        # Computes distances ignoring NaNs
+        """
+        Compute the distances between missing and non-missing samples.
+
+        Parameters:
+        X_complete (array-like): The input data without missing values.
+        X_missing (array-like): The input data with missing values.
+
+        Returns:
+        distances (array-like): The distances between each missing sample and each non-missing sample.
+        """
         n_missing = X_missing.shape[0]
         n_complete = X_complete.shape[0]
         distances = np.empty((n_missing, n_complete))
 
         for i in range(n_missing):
             for j in range(n_complete):
-                # Compute distance ignoring NaNs
                 diff = X_complete[j, :] - X_missing[i, :]
                 sq_diff = diff ** 2
                 valid_diff = ~np.isnan(sq_diff)
@@ -57,6 +115,15 @@ class KNNImputer:
         return distances
 
     def fit_transform(self, X):
+        """
+        Fit to data, then transform it using k-Nearest Neighbors imputation.
+
+        Parameters:
+        X (array-like): The input data with missing values.
+
+        Returns:
+        X_filled (array-like): The input data with missing values imputed.
+        """
         X_filled = np.copy(X)
         n_samples, n_features = X.shape
 
@@ -71,7 +138,6 @@ class KNNImputer:
                 distances = self._compute_distances(X_complete[:, [feature]], X_missing[:, [feature]])
                 nearest_neighbor_indices = np.argsort(distances, axis=1)[:, :self.n_neighbors]
                 
-                # Use the mean of the nearest neighbors for imputation
                 for i, missing_index in enumerate(np.where(missing_mask)[0]):
                     nearest_values = X[non_missing_mask][nearest_neighbor_indices[i], feature]
                     X_filled[missing_index, feature] = np.nanmean(nearest_values)
@@ -79,9 +145,18 @@ class KNNImputer:
         return X_filled
 
 
-
-
 class IterativeImputer:
+    """
+    Imputation for completing missing values using iterative model-based imputation.
+
+    Parameters:
+    max_iter (int): Maximum number of imputation iterations.
+    n_iter (int): Number of iterations for the Linear Regression model.
+    alpha (float): Learning rate for the Linear Regression model.
+
+    Attributes:
+    models (dict): Dictionary to store trained Linear Regression models for each feature.
+    """
     def __init__(self, max_iter=10, n_iter=5000, alpha=0.01):
         self.max_iter = max_iter
         self.n_iter = n_iter
@@ -89,6 +164,15 @@ class IterativeImputer:
         self.models = {}
 
     def fit_transform(self, X):
+        """
+        Fit to data, then transform it using iterative model-based imputation.
+
+        Parameters:
+        X (array-like): The input data with missing values.
+
+        Returns:
+        X_filled (array-like): The input data with missing values imputed.
+        """
         X_filled = np.array(X, dtype=float)  # Ensure working with a float copy for NaN handling
         n_samples, n_features = X.shape
 

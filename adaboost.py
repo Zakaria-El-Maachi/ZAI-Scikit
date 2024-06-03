@@ -2,6 +2,9 @@ import numpy as np
 from sklearn_base import Classifier
 
 class DecisionStump:
+    """
+    A weak learner in the form of a decision stump used in the AdaBoost algorithm.
+    """
     def __init__(self):
         self.polarity = 1
         self.feature_index = None
@@ -9,6 +12,14 @@ class DecisionStump:
         self.alpha = None  # The weight of this stump in the final decision
 
     def fit(self, X, y, sample_weights):
+        """
+        Fit the decision stump to the data.
+        
+        Args:
+        - X: Features dataset.
+        - y: Target values.
+        - sample_weights: Array of weights for each sample.
+        """
         n_samples, n_features = X.shape
         best_error = float("inf")
 
@@ -26,12 +37,25 @@ class DecisionStump:
                         self.threshold = threshold
 
     def _make_predictions(self, features, threshold, polarity):
+        
+        """
+        Make predictions based on feature values, threshold and polarity.
+        """
         if polarity == 1:
             return np.where(features < threshold, -1, 1)
         else:
             return np.where(features > threshold, -1, 1)
 
     def predict(self, X):
+        """
+        Predict the labels for a dataset.
+        
+        Args:
+        - X: Dataset to predict.
+        
+        Returns:
+        - Array of predictions.
+        """
         features = X[:, self.feature_index]
         return self._make_predictions(features, self.threshold, self.polarity)
 
@@ -39,11 +63,21 @@ class DecisionStump:
 
 
 class AdaBoostClassifier(Classifier):
+    """
+    AdaBoost classifier that uses Decision Stumps as weak learners.
+    """
     def __init__(self, n_clf=50):
         self.n_clf = n_clf
         self.clfs = []
 
     def fit(self, X, y):
+        """
+        Fit the AdaBoost model.
+        
+        Args:
+        - X: Features dataset.
+        - y: Target values.
+        """
         n_samples = X.shape[0]
         weights = np.full(n_samples, 1 / n_samples)
         self.clfs = []
@@ -67,16 +101,44 @@ class AdaBoostClassifier(Classifier):
             weights /= weights.sum()
 
     def predict(self, X):
+        """
+        Predict the class labels for the given samples.
+        
+        Args:
+        - X: Dataset to predict.
+        
+        Returns:
+        - Predicted class labels.
+        """
         clf_preds = np.array([clf.alpha * clf.predict(X) for clf in self.clfs])
         y_pred = np.sign(np.sum(clf_preds, axis=0))
         return y_pred
 
     def predict_proba(self, X):
+        """
+        Predict class probabilities for X.
+        
+        Args:
+        - X: Dataset to predict.
+        
+        Returns:
+        - Probability estimates for the positive class.
+        """
+
         clf_preds = np.array([clf.alpha * clf.predict(X) for clf in self.clfs])
         y_pred = np.sum(clf_preds, axis=0)
         prob_pos = np.exp(y_pred) / (np.exp(y_pred) + np.exp(-y_pred))
         return np.vstack((1 - prob_pos, prob_pos)).T
 
     def predict_sample_proba(self, sample):
+        """
+        Predict the class probabilities for a single sample.
+        
+        Args:
+        - sample: A single data point.
+        
+        Returns:
+        - Probability estimates for the positive class.
+        """
         sample = np.array(sample).reshape(1, -1)  # Ensure sample is 2D
         return self.predict_proba(sample)[0]
