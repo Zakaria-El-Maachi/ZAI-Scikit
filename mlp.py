@@ -32,7 +32,6 @@ class Layer(ABC):
         """
         pass
 
-
 class FullyConnectedLayer(Layer):
     """
     Fully connected (dense) layer in a neural network.
@@ -45,7 +44,7 @@ class FullyConnectedLayer(Layer):
     def __init__(self, input_size, output_size, use_bias=True):
         self.use_bias = use_bias
         self.weights = np.random.randn(output_size, input_size) * np.sqrt(2.0 / input_size)
-        self.bias = np.random.randn(output_size, 1) if use_bias else None
+        self.bias = np.zeros((output_size, 1)) if use_bias else None
 
     def forward(self, input_data):
         """
@@ -77,11 +76,14 @@ class FullyConnectedLayer(Layer):
         weights_gradient = np.dot(output_gradient, self.input_data.T)
         input_gradient = np.dot(self.weights.T, output_gradient)
         
+        # Gradient clipping
+        np.clip(weights_gradient, -1, 1, out=weights_gradient)
+        np.clip(input_gradient, -1, 1, out=input_gradient)
+        
         self.weights -= learning_rate * weights_gradient
         if self.use_bias:
-            self.bias -= learning_rate * output_gradient
+            self.bias -= learning_rate * np.sum(output_gradient, axis=1, keepdims=True)
         return input_gradient
-
 
 class ActivationFunction(Layer):
     """
@@ -119,18 +121,19 @@ class ActivationFunction(Layer):
         Returns:
         numpy.ndarray: Gradient of the loss with respect to the layer's input.
         """
-        return output_gradient * self.function_prime(self.input_data)
-
+        input_prime = self.function_prime(self.input_data)
+        output = output_gradient * input_prime
+        np.clip(output, -1, 1, out=output)  # Gradient clipping
+        return output
 
 class Sigmoid(ActivationFunction):
     """
     Sigmoid activation function layer.
     """
     def __init__(self):
-        sigmoid = lambda x: 1 / (1 + np.exp(-x))
+        sigmoid = lambda x: 1 / (1 + np.exp(-np.clip(x, -500, 500)))  # Clipping to avoid overflow
         sigmoid_prime = lambda x: sigmoid(x) * (1 - sigmoid(x))
         super().__init__(sigmoid, sigmoid_prime)
-
 
 class ReLU(ActivationFunction):
     """
@@ -141,22 +144,25 @@ class ReLU(ActivationFunction):
         relu_prime = lambda x: (x > 0).astype(float)
         super().__init__(relu, relu_prime)
 
-
 class Softmax(ActivationFunction):
     """
     Softmax activation function layer.
     """
     def __init__(self):
-        softmax = lambda x: np.exp(x) / np.sum(np.exp(x), axis=0)
-        softmax_prime = lambda x: softmax(x) * (1 - softmax(x))
-        super().__init__(softmax, softmax_prime)
-
+        softmax = lambda x: np.exp(x - np.max(x)) / np.sum(np.exp(x - np.max(x)), axis=0)
+        super().__init__(softmax, lambda x: x)  # Softmax prime is handled differently in practice
 
 class MLP:
     """
     Multi-Layer Perceptron (MLP) model.
+    
+    Parameters:
+    epochs (int): Number of training epochs. Default is 500.
+    learning_rate (float): Learning rate for updating the MLP's parameters. Default is 0.01.
     """
-    def __init__(self):
+    def __init__(self, epochs=500, learning_rate=0.01):
+        self.epochs = epochs
+        self.learning_rate = learning_rate
         self.layers = []
 
     def add_layer(self, layer):
@@ -194,21 +200,21 @@ class MLP:
         for layer in reversed(self.layers):
             output_gradient = layer.backward(output_gradient, learning_rate)
 
-    def fit(self, X, y, epochs, learning_rate):
+    def fit(self, X, y):
         """
         Train the MLP using the provided training data.
 
         Parameters:
         X (numpy.ndarray): Training features.
         y (numpy.ndarray): Training labels.
-        epochs (int): Number of training epochs.
-        learning_rate (float): Learning rate for updating the MLP's parameters.
         """
-        for epoch in range(epochs):
+        for epoch in range(self.epochs):
             for x, target in zip(X, y):
+                x = x.reshape(-1, 1)  # Ensure column vector
+                target = target.reshape(-1, 1)  # Ensure column vector
                 output = self.forward(x)
                 output_gradient = self.loss_derivative(output, target)
-                self.backward(output_gradient, learning_rate)
+                self.backward(output_gradient, self.learning_rate)
 
     def predict(self, X):
         """
@@ -220,7 +226,8 @@ class MLP:
         Returns:
         list: Predicted outputs for the input data.
         """
-        return [self.forward(x) for x in X]
+        outputs = [self.forward(x.reshape(-1, 1)) for x in X]
+        return outputs
 
     def loss(self, output, target):
         """
