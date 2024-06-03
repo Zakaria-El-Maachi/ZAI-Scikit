@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='ZAIScikit',
-    version='0.1.0',
+    version='0.1.1',
     author='Zakaria',
     author_email='zakaria.elmaachi19@gmail.com',
     description='A Machine learning library',
