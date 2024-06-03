@@ -136,3 +136,79 @@ class DecisionTreeClassifier(Classifier):
                 curNode = curNode.right
         return curNode.probaDistribution
 
+
+class DecisionStumpRegressor:
+    def __init__(self, feature=None, threshold=None, value=None):
+        self.feature = feature
+        self.threshold = threshold
+        self.value = value
+        self.left = None
+        self.right = None
+
+    def is_leaf(self):
+        return self.left is None and self.right is None
+
+    def fit(self, data, target):
+        best_mse = np.inf
+        best_feature = None
+        best_threshold = None
+
+        for feature in range(data.shape[1]):
+            thresholds = np.unique(data[:, feature])
+            for t in thresholds:
+                left_indices = data[:, feature] <= t
+                right_indices = data[:, feature] > t
+                if len(left_indices) < 2 or len(right_indices) < 2:
+                    continue
+
+                left_mse = np.var(target[left_indices]) * np.sum(left_indices)
+                right_mse = np.var(target[right_indices]) * np.sum(right_indices)
+                mse = left_mse + right_mse
+
+                if mse < best_mse:
+                    best_mse = mse
+                    best_feature = feature
+                    best_threshold = t
+
+        self.feature = best_feature
+        self.threshold = best_threshold
+
+    def predict_sample(self, sample):
+        if self.is_leaf():
+            return self.value
+        if sample[self.feature] <= self.threshold:
+            return self.left.predict_sample(sample)
+        else:
+            return self.right.predict_sample(sample)
+
+
+
+
+class DecisionTreeRegressor:
+    def __init__(self, max_depth=3, min_samples_split=2):
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.root = None
+
+    def fit(self, X, y):
+        self.root = self._grow_tree(X, y)
+
+    def _grow_tree(self, X, y, depth=0):
+        if depth >= self.max_depth or len(y) < self.min_samples_split or np.var(y) == 0:
+            leaf_value = np.mean(y)
+            return DecisionStumpRegressor(value=leaf_value)
+
+        node = DecisionStumpRegressor()
+        node.fit(X, y)
+        if node.feature is None:
+            leaf_value = np.mean(y)
+            return DecisionStumpRegressor(value=leaf_value)
+
+        left_indices = X[:, node.feature] <= node.threshold
+        right_indices = X[:, node.feature] > node.threshold
+        node.left = self._grow_tree(X[left_indices], y[left_indices], depth + 1)
+        node.right = self._grow_tree(X[right_indices], y[right_indices], depth + 1)
+        return node
+
+    def predict(self, X):
+        return np.array([self.root.predict_sample(sample) for sample in X])
